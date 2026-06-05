@@ -1,0 +1,20 @@
+{
+  "name": "Weather Forecast App",
+  "short_name": "Weather",
+  "description": "Progressive web app for weather forecasts and location management",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["weather", "productivity"]
+}
