@@ -165,15 +165,41 @@ function App() {
     try {
       const censusGeocoderUrl = 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress'
       const query = `address=${encodeURIComponent(locationInput.trim())}&benchmark=Public_AR_Current&format=json`
-      const endpoint = import.meta.env.DEV
-        ? `/api/geocode?${query}`
-        : `https://api.allorigins.win/raw?url=${encodeURIComponent(`${censusGeocoderUrl}?${query}`)}`
+      const geocodeUrl = `${censusGeocoderUrl}?${query}`
 
-      const response = await fetch(endpoint)
-      if (!response.ok) {
-        throw new Error(`Geocoding request failed with status ${response.status}`)
+      const fetchGeocode = async (url) => {
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error(`Geocoding request failed with status ${response.status}`)
+        }
+        return response.json()
       }
-      const data = await response.json()
+
+      let data
+      if (import.meta.env.DEV) {
+        data = await fetchGeocode(`/api/geocode?${query}`)
+      } else {
+        const proxies = [
+          `https://api.allorigins.win/raw?url=${encodeURIComponent(geocodeUrl)}`,
+          `https://corsproxy.io/?${encodeURIComponent(geocodeUrl)}`,
+          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(geocodeUrl)}`,
+        ]
+
+        let lastError
+        for (const proxy of proxies) {
+          try {
+            data = await fetchGeocode(proxy)
+            break
+          } catch (err) {
+            lastError = err
+          }
+        }
+
+        if (!data) {
+          throw lastError || new Error('Geocoding request failed on all proxy endpoints.')
+        }
+      }
+
       const match = data?.result?.addressMatches?.[0]
       if (!match?.coordinates) {
         throw new Error('No geocoding match found for this address.')
