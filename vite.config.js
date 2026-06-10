@@ -34,7 +34,7 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
-  base: {'/'},
+  base: "/myapp", 
   server: {
     proxy: {
       '/api/geocode': {
