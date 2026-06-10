@@ -4,10 +4,6 @@ import babel from '@rolldown/plugin-babel'
 import fs from 'fs'
 import path from 'path'
 
-export default {
-  base: '/',
-}
-
 // Generate self-signed certificate if it doesn't exist
 const certDir = path.join(process.cwd(), '.certs')
 const certFile = path.join(certDir, 'cert.pem')
@@ -38,6 +34,7 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  base: '/',
   server: {
     proxy: {
       '/api/geocode': {
