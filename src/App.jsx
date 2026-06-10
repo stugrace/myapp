@@ -163,7 +163,10 @@ function App() {
     setError('')
 
     try {
-      const endpoint = `/api/geocode?address=${encodeURIComponent(locationInput.trim())}&benchmark=Public_AR_Current&format=json`
+      const geocoderUrl = import.meta.env.DEV
+        ? '/api/geocode'
+        : 'https://geocoding.geo.census.gov/geocoder/locations/onelineaddress'
+      const endpoint = `${geocoderUrl}?address=${encodeURIComponent(locationInput.trim())}&benchmark=Public_AR_Current&format=json`
       const response = await fetch(endpoint)
       if (!response.ok) {
         throw new Error(`Geocoding request failed with status ${response.status}`)
