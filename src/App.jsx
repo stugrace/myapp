@@ -60,6 +60,8 @@ function App() {
   const [forecastHourlyData, setForecastHourlyData] = useState(null)
   const [forecastData, setForecastData] = useState(null)
   const [lastRefreshed, setLastRefreshed] = useState(null)
+  const [alerts, setAlerts] = useState(null)
+  const [alertHeadline, setAlertHeadline] = useState(null)
   const selectedLocation = locations.find((location) => location.id === selectedLocationId) || locations[0]
   const upcomingHourlyData = forecastHourlyData?.filter((period) => {
     if (!period?.startTime) return false
@@ -122,10 +124,64 @@ function App() {
         setForecastData(forecastJson?.properties?.periods || null)
       }
       setLastRefreshed(new Date())
+      // Fetch active alerts for this location (non-blocking)
+      try {
+        fetchAlerts(latitude, longitude)
+      } catch {
+        // ignore alert errors here
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load forecast.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAlerts = async (latitude, longitude) => {
+    if (latitude == null || longitude == null) return
+    try {
+      const url = `https://api.weather.gov/alerts/active?point=${latitude},${longitude}`
+
+      // Direct call to NWS alerts API (no proxy)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 8000)
+      const res = await fetch(url, {
+        signal: controller.signal,
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      })
+      clearTimeout(timeout)
+
+      if (!res.ok) {
+        setAlerts(null)
+        setAlertHeadline(null)
+        return
+      }
+
+      const json = await res.json()
+      const features = json?.features || null
+      setAlerts(features)
+
+      // prefer parameters.NWSheadline, then properties.headline, then event
+      let headline = null
+      if (Array.isArray(features)) {
+        for (const f of features) {
+          const p = f?.properties
+          const paramHeadline = p?.parameters?.NWSheadline
+          if (paramHeadline) {
+            if (Array.isArray(paramHeadline)) headline = paramHeadline[0]
+            else headline = paramHeadline
+          }
+          if (!headline && p?.headline) headline = p.headline
+          if (!headline && p?.event) headline = p.event
+          if (headline) break
+        }
+      }
+      setAlertHeadline(headline)
+    } catch (err) {
+      // Silently fail - alerts are optional or may be blocked by CORS
+      setAlerts(null)
+      setAlertHeadline(null)
     }
   }
 
@@ -139,6 +195,19 @@ function App() {
     }, FORECAST_REFRESH_INTERVAL_MS)
 
     return () => window.clearInterval(intervalId)
+  }, [selectedLocationId, selectedLocation?.latitude, selectedLocation?.longitude])
+
+  // Refresh alert data every 15 minutes for the selected location
+  useEffect(() => {
+    if (!selectedLocation) return
+    if (selectedLocation.latitude == null || selectedLocation.longitude == null) return
+
+    fetchAlerts(selectedLocation.latitude, selectedLocation.longitude)
+    const alertInterval = window.setInterval(() => {
+      fetchAlerts(selectedLocation.latitude, selectedLocation.longitude)
+    }, 15 * 60 * 1000)
+
+    return () => window.clearInterval(alertInterval)
   }, [selectedLocationId, selectedLocation?.latitude, selectedLocation?.longitude])
 
   const handleSelectLocation = (id) => {
@@ -307,9 +376,16 @@ function App() {
             : 'Pick a location from the panel to see weather and coordinates.'}
         </p>
         {lastRefreshed && (
-          <p className="refresh-timestamp">
-            Last refreshed: {lastRefreshed.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-          </p>
+          <>
+            {alertHeadline && (
+              <p className="alert-headline">
+                <strong>{alertHeadline}</strong>
+              </p>
+            )}
+            <p className="refresh-timestamp">
+              Last refreshed: {lastRefreshed.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+            </p>
+          </>
         )}
         {/*}
         <div className="selected-info">
