@@ -126,6 +126,7 @@ function App() {
       setLastRefreshed(new Date())
       // Fetch active alerts for this location (non-blocking)
       try {
+        console.debug('[fetchForecast] calling fetchAlerts for', latitude, longitude)
         fetchAlerts(latitude, longitude)
       } catch {
         // ignore alert errors here
@@ -139,6 +140,7 @@ function App() {
 
   const fetchAlerts = async (latitude, longitude) => {
     if (latitude == null || longitude == null) return
+    console.debug('[fetchAlerts] called with', latitude, longitude)
     try {
       const url = `https://api.weather.gov/alerts/active?point=${latitude},${longitude}`
 
@@ -180,6 +182,7 @@ function App() {
       setAlertHeadline(headline)
     } catch (err) {
       // Silently fail - alerts are optional or may be blocked by CORS
+      console.error('[fetchAlerts] error', err)
       setAlerts(null)
       setAlertHeadline(null)
     }
@@ -203,6 +206,7 @@ function App() {
     if (selectedLocation.latitude == null || selectedLocation.longitude == null) return
 
     fetchAlerts(selectedLocation.latitude, selectedLocation.longitude)
+    console.debug('[alerts useEffect] scheduling immediate fetch and interval for', selectedLocation.latitude, selectedLocation.longitude)
     const alertInterval = window.setInterval(() => {
       fetchAlerts(selectedLocation.latitude, selectedLocation.longitude)
     }, 15 * 60 * 1000)
